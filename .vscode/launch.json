@@ -1,0 +1,68 @@
+{
+    // IntelliSense を使用して利用可能な属性を学べます。
+    // 既存の属性の説明をホバーして表示します。
+    // 詳細情報は次を確認してください: https://go.microsoft.com/fwlink/?linkid=830387
+    // python main.py --config ./configs/vae/cvtvae2-v1-train.yaml
+    // python main.py --config ./configs/vae/resvae16x16x12.yaml
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: train-vqvae",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--gpus",
+                "1"
+            ]
+        },
+        {
+            "name": "Python: train-resvae",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--config",
+                "./configs/vae/resvae16x16x12.yaml"
+            ]
+        },
+        {
+            "name": "Python: train-native-vae",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--config",
+                "./configs/vae/native-dvae2-v1-train.yaml"
+            ]
+        },
+        {
+            "name": "Python: download-konachan",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "args": [
+                "--config",
+                "./crawler/configs/konachan.yaml"
+            ]
+        },
+        {
+            "name": "Python: scrape-konachan",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "args": [
+                "--config",
+                "./crawler/configs/konachan.yaml"
+            ]
+        }
+    ]
+}
