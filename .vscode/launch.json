@@ -14,20 +14,20 @@
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
-                "--gpus",
-                "1"
+                "--config",
+                "./configs/vae/stride4x4x4.yaml"
             ]
         },
         {
-            "name": "Python: train-resvae",
+            "name": "Python: train-gpt",
             "type": "python",
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
-                "--config",
-                "./configs/vae/resvae16x16x12.yaml"
+                "--gpus",
+                "1"
             ]
         },
         {

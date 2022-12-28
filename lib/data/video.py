@@ -170,9 +170,13 @@ class HDF5Dataset(data.Dataset):
 
 class VideoData(pl.LightningDataModule):
 
-    def __init__(self, args):
+    def __init__(self, data_path, batch_size, sequence_length, resolution, num_workers=4):
         super().__init__()
-        self.args = args
+        self.data_path = data_path
+        self.batch_size = batch_size
+        self.sequence_length = sequence_length
+        self.resolution = resolution
+        self.num_workers = num_workers
 
     @property
     def n_classes(self):
@@ -181,9 +185,9 @@ class VideoData(pl.LightningDataModule):
 
 
     def _dataset(self, train):
-        Dataset = VideoDataset if osp.isdir(self.args.data_path) else HDF5Dataset
-        dataset = Dataset(self.args.data_path, self.args.sequence_length,
-                          train=train, resolution=self.args.resolution)
+        Dataset = VideoDataset if osp.isdir(self.data_path) else HDF5Dataset
+        dataset = Dataset(self.data_path, self.sequence_length,
+                          train=train, resolution=self.resolution)
         return dataset
 
 
@@ -197,8 +201,8 @@ class VideoData(pl.LightningDataModule):
             sampler = None
         dataloader = data.DataLoader(
             dataset,
-            batch_size=self.args.batch_size,
-            num_workers=self.args.num_workers,
+            batch_size=self.batch_size,
+            num_workers=self.num_workers,
             pin_memory=True,
             sampler=sampler,
             shuffle=sampler is None

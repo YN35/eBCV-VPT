@@ -12,19 +12,18 @@ from ..modules.attention import MultiHeadAttention
 from ..utils import shift_dim
 
 class VQVAE(pl.LightningModule):
-    def __init__(self, args):
+    def __init__(self, embed_dim, n_codes, ddconfig):
         super().__init__()
-        self.args = args
-        self.embedding_dim = args.embedding_dim
-        self.n_codes = args.n_codes
+        self.embed_dim = embed_dim
+        self.n_codes = n_codes
 
-        self.encoder = Encoder(args.n_hiddens, args.n_res_layers, args.downsample)
-        self.decoder = Decoder(args.n_hiddens, args.n_res_layers, args.downsample)
+        self.encoder = Encoder(**ddconfig)
+        self.decoder = Decoder(**ddconfig)
 
-        self.pre_vq_conv = SamePadConv3d(args.n_hiddens, args.embedding_dim, 1)
-        self.post_vq_conv = SamePadConv3d(args.embedding_dim, args.n_hiddens, 1)
+        self.pre_vq_conv = SamePadConv3d(ddconfig.n_hiddens, embed_dim, 1)
+        self.post_vq_conv = SamePadConv3d(embed_dim, ddconfig.n_hiddens, 1)
 
-        self.codebook = Codebook(args.n_codes, args.embedding_dim)
+        self.codebook = Codebook(n_codes, embed_dim)
         self.save_hyperparameters()
 
     @property
@@ -59,7 +58,10 @@ class VQVAE(pl.LightningModule):
         x = batch['video']
         recon_loss, _, vq_output = self.forward(x)
         commitment_loss = vq_output['commitment_loss']
-        loss = recon_loss + commitment_loss
+        loss = recon_loss + commitment_loss * 0.25
+        self.log("train/vaeloss", loss, prog_bar=True, logger=True, on_step=True, on_epoch=True)
+        self.log("train/recloss", recon_loss, prog_bar=False, logger=True, on_step=True, on_epoch=True)
+        self.log("train/comloss", commitment_loss, prog_bar=False, logger=True, on_step=True, on_epoch=True)
         return loss
 
     def validation_step(self, batch, batch_idx):
@@ -70,17 +72,19 @@ class VQVAE(pl.LightningModule):
         self.log('val/commitment_loss', vq_output['commitment_loss'], prog_bar=True)
 
     def configure_optimizers(self):
-        return torch.optim.Adam(self.parameters(), lr=3e-4, betas=(0.9, 0.999))
-
-    @staticmethod
-    def add_model_specific_args(parent_parser):
-        parser = argparse.ArgumentParser(parents=[parent_parser], add_help=False)
-        parser.add_argument('--embedding_dim', type=int, default=256)
-        parser.add_argument('--n_codes', type=int, default=2048)
-        parser.add_argument('--n_hiddens', type=int, default=240)
-        parser.add_argument('--n_res_layers', type=int, default=4)
-        parser.add_argument('--downsample', nargs='+', type=int, default=(4, 4, 4))
-        return parser
+        return torch.optim.Adam(self.parameters(), lr=7e-6, betas=(0.9, 0.999))
+    
+    @torch.no_grad()
+    def log_videos(self, batch, only_inputs=False, **kwargs):
+        log = dict()
+        x = batch['video']
+        x = x.to(self.device)
+        recon_loss, x_recon, vq_output = self.forward(x)
+        
+        log["reconstructions"] = x_recon
+        # log["samples"] = self.decode(torch.randn_like(posterior.sample()))
+        log["inputs"] = x
+        return log
 
 
 class AxialBlock(nn.Module):
@@ -122,14 +126,14 @@ class AttentionResidualBlock(nn.Module):
         return x + self.block(x)
 
 class Codebook(nn.Module):
-    def __init__(self, n_codes, embedding_dim):
+    def __init__(self, n_codes, embed_dim):
         super().__init__()
-        self.register_buffer('embeddings', torch.randn(n_codes, embedding_dim))
+        self.register_buffer('embeddings', torch.randn(n_codes, embed_dim))
         self.register_buffer('N', torch.zeros(n_codes))
         self.register_buffer('z_avg', self.embeddings.data.clone())
 
         self.n_codes = n_codes
-        self.embedding_dim = embedding_dim
+        self.embed_dim = embed_dim
         self._need_init = True
 
     def _tile(self, x):
@@ -210,9 +214,9 @@ class Codebook(nn.Module):
         return embeddings
 
 class Encoder(nn.Module):
-    def __init__(self, n_hiddens, n_res_layers, downsample):
+    def __init__(self, n_hiddens, n_res_layers, sampleratio):
         super().__init__()
-        n_times_downsample = np.array([int(math.log2(d)) for d in downsample])
+        n_times_downsample = np.array([int(math.log2(d)) for d in sampleratio])
         self.convs = nn.ModuleList()
         max_ds = n_times_downsample.max()
         for i in range(max_ds):
@@ -240,7 +244,7 @@ class Encoder(nn.Module):
 
 
 class Decoder(nn.Module):
-    def __init__(self, n_hiddens, n_res_layers, upsample):
+    def __init__(self, n_hiddens, n_res_layers, sampleratio):
         super().__init__()
         self.res_stack = nn.Sequential(
             *[AttentionResidualBlock(n_hiddens)
@@ -249,7 +253,7 @@ class Decoder(nn.Module):
             nn.ReLU()
         )
 
-        n_times_upsample = np.array([int(math.log2(d)) for d in upsample])
+        n_times_upsample = np.array([int(math.log2(d)) for d in sampleratio])
         max_us = n_times_upsample.max()
         self.convts = nn.ModuleList()
         for i in range(max_us):

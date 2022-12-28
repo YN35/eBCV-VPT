@@ -49,7 +49,7 @@ class VideoGPT(pl.LightningModule):
         # VideoGPT transformer
         self.shape = self.vqvae.latent_shape
 
-        self.fc_in = nn.Linear(self.vqvae.embedding_dim, args.hidden_dim, bias=False)
+        self.fc_in = nn.Linear(self.vqvae.embed_dim, args.hidden_dim, bias=False)
         self.fc_in.weight.data.normal_(std=0.02)
 
         self.attn_stack = AttentionStack(

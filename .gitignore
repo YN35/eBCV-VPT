@@ -1,5 +1,6 @@
 __pycache__/
 lightning_logs/
+logs/
 datasets/
 .ipynb_checkpoints/
 *.mp4

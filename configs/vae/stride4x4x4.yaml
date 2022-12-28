@@ -1,0 +1,51 @@
+model:
+  base_learning_rate: 7.0e-5
+  target: lib.models.vqvae.VQVAE
+  params:
+    embed_dim: 256
+    n_codes: 1024
+    ddconfig:
+      n_hiddens: 240
+      n_res_layers: 4
+      sampleratio: [4, 4, 4]
+
+data:
+  target: lib.data.video.VideoData
+  params:
+    data_path: ./datasets/ucf101
+    batch_size: 32
+    sequence_length: 16
+    resolution: 64
+    num_workers: 12
+
+lightning:
+  callbacks:
+    image_logger:
+      target: lib.modules.logger.VideoLogger
+      params:
+        batch_frequency: 1000
+        max_videos: 1
+        increase_log_steps: True
+
+  modelcheckpoint:
+    params:
+      every_n_train_steps: 500
+
+  trainer:
+    max_steps: 1000000
+    benchmark: True
+    # truth_batch_size = batch_size * accumulate_grad_batches
+    accumulate_grad_batches: 1
+
+opt:
+  debug: True
+  seed: 334
+  gpus: 0, 
+  logdir: ./logs
+  name: vqvae
+  mode: train
+  no_test: False
+  modelprm: ./modelprms/vae.ckpt
+  logoffline: False
+  scale_lr: False
+  fp16: True
