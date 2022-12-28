@@ -77,7 +77,7 @@ def get_parent_dir(path):
 
 
 def preprocess(video, resolution, sequence_length=None):
-    """ Preprocess a video tensor of shape [frames, height, width, channels] to [channels, frames, resolution[0], resolution[1]] """
+    """ Preprocess a video tensor of shape [frames, height, width, channels] to [channels, frames, resolution[0], resolution[1]] -1, 1"""
     # video: THWC, {0, ..., 255}
     video = video.permute(0, 3, 1, 2).float() / 255. # TCHW
     t, c, h, w = video.shape
@@ -103,7 +103,7 @@ def preprocess(video, resolution, sequence_length=None):
     video = video[:, :, h_start:h_start + resolution, w_start:w_start + resolution]
     video = video.permute(1, 0, 2, 3).contiguous() # CTHW
 
-    video -= 0.5
+    video = video * 2.0 - 1.0
 
     return video
 

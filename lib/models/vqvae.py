@@ -8,7 +8,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.distributed as dist
 
-from ..modules.attention import MultiHeadAttention
+from ..modules.attention.attention import MultiHeadAttention
 from ..utils import shift_dim
 
 class VQVAE(pl.LightningModule):

@@ -1,0 +1,2 @@
+from lib.modules.losses.contperceptual import LPIPSWithDiscriminator
+# from lib.modules.losses.contperceptual_native import LPIPSWithDiscriminatorNative

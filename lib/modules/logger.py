@@ -48,7 +48,8 @@ class VideoLogger(Callback):
         root = os.path.join(save_dir, "videos", split)
         for k in videos:
             for i, video in enumerate(videos[k]):
-                video = ((video+0.5)*255).permute(1, 2, 3, 0)
+                video = ((video+1.0)*255/2).permute(1, 2, 3, 0) # -1,1 -> 0,255
+                video = video.clip(0, 255)
                 filename = "{}_gs-{:06}_e-{:06}_b-{:06}_{}.mp4".format(
                     k,
                     global_step,
@@ -57,7 +58,7 @@ class VideoLogger(Callback):
                     i)
                 path = os.path.join(root, filename)
                 os.makedirs(os.path.split(path)[0], exist_ok=True)
-                write_video(path, video_array=video, fps=6, video_codec='libx264')
+                write_video(path, video_array=video, fps=8, video_codec='libx264')
 
     def log_video(self, pl_module, batch, batch_idx, split="train"):
         check_idx = batch_idx if self.log_on_batch_idx else pl_module.global_step

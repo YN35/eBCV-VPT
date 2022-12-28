@@ -2,7 +2,9 @@ __pycache__/
 lightning_logs/
 logs/
 datasets/
+taming/
 .ipynb_checkpoints/
 *.mp4
+*.pth
 *.egg-info
 i3d_pretrained_400.pt

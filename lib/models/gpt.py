@@ -11,7 +11,7 @@ import torch.optim.lr_scheduler as lr_scheduler
 import pytorch_lightning as pl
 
 from ..modules.resnet import resnet34
-from ..modules.attention import AttentionStack, LayerNorm, AddBroadcastPosEmbed
+from ..modules.attention.attention import AttentionStack, LayerNorm, AddBroadcastPosEmbed
 from ..utils import shift_dim
 
 
