@@ -23,13 +23,13 @@ model:
       ae:
         target: torch.optim.AdamW
         params:
-          lr: 4.0e-6
+          lr: 5.0e-6
           betas: [0.9, 0.999]
           weight_decay: 0.01
       disc:
         target: torch.optim.AdamW
         params:
-          lr: 4.0e-6
+          lr: 5.0e-6
           betas: [0.9, 0.999]
           weight_decay: 0.01
 
@@ -48,7 +48,7 @@ model:
     ddconfig:
       double_z: True
       z_channels: 4
-      resolution: 128
+      resolution: 64
       in_channels: 3
       out_ch: 3
       ch: 128
@@ -56,15 +56,18 @@ model:
       num_res_blocks: 2
       attn_resolutions: [ ]
       dropout: 0.0
+      attn_type: divided_spacetime
 
 data:
   target: lib.data.video.VideoData
   params:
     data_path: ./datasets/ucf101
-    batch_size: 2
-    sequence_length: 16
-    resolution: 128
-    num_workers: 12
+    batch_size: 4
+    sequence_length: 32
+    frame_rate: 15
+    crop_size: 256
+    resolution: 64
+    num_workers: 20
 
 lightning:
   callbacks:
@@ -83,7 +86,7 @@ lightning:
     max_steps: 1000000
     benchmark: True
     # truth_batch_size = batch_size * accumulate_grad_batches
-    accumulate_grad_batches: 1
+    accumulate_grad_batches: 2
 
 opt:
   debug: True

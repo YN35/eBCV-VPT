@@ -22,7 +22,7 @@ class VideoDataset(data.Dataset):
     Returns BCTHW videos in the range [-0.5, 0.5] """
     exts = ['avi', 'mp4', 'webm']
 
-    def __init__(self, data_folder, sequence_length, train=True, resolution=64):
+    def __init__(self, data_folder, sequence_length, frame_rate, crop_size, resolution, train=True):
         """
         Args:
             data_folder: path to the folder with videos. The folder
@@ -33,6 +33,7 @@ class VideoDataset(data.Dataset):
         super().__init__()
         self.train = train
         self.sequence_length = sequence_length
+        self.crop_size = crop_size
         self.resolution = resolution
 
         folder = osp.join(data_folder, 'train' if train else 'test')
@@ -47,11 +48,11 @@ class VideoDataset(data.Dataset):
         warnings.filterwarnings('ignore')
         cache_file = osp.join(folder, f"metadata_{sequence_length}.pkl")
         if not osp.exists(cache_file):
-            clips = VideoClips(files, sequence_length, num_workers=32)
+            clips = VideoClips(video_paths=files, clip_length_in_frames=sequence_length, frame_rate=frame_rate, num_workers=32)
             pickle.dump(clips.metadata, open(cache_file, 'wb'))
         else:
             metadata = pickle.load(open(cache_file, 'rb'))
-            clips = VideoClips(files, sequence_length,
+            clips = VideoClips(video_paths=files, clip_length_in_frames=sequence_length, frame_rate=frame_rate,
                                _precomputed_metadata=metadata)
         self._clips = clips
 
@@ -64,19 +65,20 @@ class VideoDataset(data.Dataset):
 
     def __getitem__(self, idx):
         resolution = self.resolution
+        crop_size = self.crop_size
         # video : [frames, height, width, channels]
         video, _, _, idx = self._clips.get_clip(idx)
 
         class_name = get_parent_dir(self._clips.video_paths[idx])
         label = self.class_to_label[class_name]
-        return dict(video=preprocess(video, resolution), label=label)
+        return dict(video=preprocess(video, crop_size, resolution), label=label)
 
 
 def get_parent_dir(path):
     return osp.basename(osp.dirname(path))
 
 
-def preprocess(video, resolution, sequence_length=None):
+def preprocess(video, crop_size, resolution, sequence_length=None):
     """ Preprocess a video tensor of shape [frames, height, width, channels] to [channels, frames, resolution[0], resolution[1]] -1, 1"""
     # video: THWC, {0, ..., 255}
     video = video.permute(0, 3, 1, 2).float() / 255. # TCHW
@@ -88,18 +90,24 @@ def preprocess(video, resolution, sequence_length=None):
         video = video[:sequence_length]
 
     # scale shorter side to resolution
-    scale = resolution / min(h, w)
+    scale = crop_size / min(h, w)
     if h < w:
-        target_size = (resolution, math.ceil(w * scale))
+        target_size = (crop_size, math.ceil(w * scale))
     else:
-        target_size = (math.ceil(h * scale), resolution)
+        target_size = (math.ceil(h * scale), crop_size)
     video = F.interpolate(video, size=target_size, mode='bilinear',
                           align_corners=False)
 
     # center crop
+    # t, c, h, w = video.shape
+    # w_start = (w - resolution) // 2
+    # h_start = (h - resolution) // 2
+    # video = video[:, :, h_start:h_start + resolution, w_start:w_start + resolution]
+    
+    # random crop
     t, c, h, w = video.shape
-    w_start = (w - resolution) // 2
-    h_start = (h - resolution) // 2
+    w_start = random.randint(0, w - resolution)
+    h_start = random.randint(0, h - resolution)
     video = video[:, :, h_start:h_start + resolution, w_start:w_start + resolution]
     video = video.permute(1, 0, 2, 3).contiguous() # CTHW
 
@@ -170,13 +178,15 @@ class HDF5Dataset(data.Dataset):
 
 class VideoData(pl.LightningDataModule):
 
-    def __init__(self, data_path, batch_size, sequence_length, resolution, num_workers=4):
+    def __init__(self, data_path, batch_size, sequence_length, frame_rate, crop_size, resolution, num_workers=4):
         super().__init__()
         self.data_path = data_path
         self.batch_size = batch_size
         self.sequence_length = sequence_length
+        self.crop_size = crop_size
         self.resolution = resolution
         self.num_workers = num_workers
+        self.frame_rate = frame_rate
 
     @property
     def n_classes(self):
@@ -186,8 +196,8 @@ class VideoData(pl.LightningDataModule):
 
     def _dataset(self, train):
         Dataset = VideoDataset if osp.isdir(self.data_path) else HDF5Dataset
-        dataset = Dataset(self.data_path, self.sequence_length,
-                          train=train, resolution=self.resolution)
+        dataset = Dataset(self.data_path, self.sequence_length, self.frame_rate, self.crop_size, self.resolution,
+                          train=train)
         return dataset
 
 
