@@ -39,7 +39,7 @@ model:
         # LPIPS loss の割合
         perceptual_weight: 1.0
         # discriminatorのを利用したVAE学習をいつから始めるか
-        disc_start: 40001
+        disc_start: 60001
         kl_weight: 0.001
         disc_weight: 0.14
         disc_loss: hinge

@@ -6,7 +6,6 @@ from torch import nn, einsum
 from einops import rearrange, repeat
 
 from ...utils import shift_dim
-from lib.modules.diffusionmodules.util import checkpoint
 from lib.modules.attention.sd_attention import SpatialSelfAttention
 from lib.modules.attention.vg_attention import MultiHeadAttention
 
